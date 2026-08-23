@@ -23,6 +23,14 @@
 > is "department (Hermes 智能体联合委员会) + models participating in this session + date", with an
 > optional official seal. Output is standard Word 2003 XML, openable directly in WPS / Word.
 
+## 预览 / Preview
+
+本会话生成的公文预览（默认新章）：
+
+> Red-header document preview generated from this session (with the default seal):
+
+![红头公文预览](./previews/red-header.png)
+
 ## 功能 / Features
 
 - 数据驱动：真实读取会话事件，不套模板（事件条数、类型分类、执行记录、模型点名、验收结论、归档要求）
@@ -43,6 +51,18 @@
 |---|---|
 | `assets/seal-default.png` | **新章**（2048×2048）——默认款 / **New seal** (2048×2048) — default |
 | `assets/seal-legacy.png` | **旧章**（1500×1500）——前一款，可选 / **Legacy seal** (1500×1500) — optional |
+
+**新章（默认） / New seal (default):**
+
+![新章](./previews/seal-default.png)
+
+![爱弥斯](./previews/aemis.jpg)
+
+> **誓死效忠爱弥斯联合！**
+
+**旧章（可选） / Legacy seal (optional):**
+
+![旧章](./previews/seal-legacy.png)
 
 选择方式 / Selection:
 

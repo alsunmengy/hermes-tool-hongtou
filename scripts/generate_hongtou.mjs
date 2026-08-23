@@ -124,8 +124,8 @@ function renderSections(sections) {
   const out = [];
   sections.forEach((section, index) => {
     out.push(bodyParagraph(`${levelMarker(0, index)}${section.title}`, "黑体", { bold: true }));
-    if (section.items?.length) out.push(renderNestedItems(section.items, 1));
     for (const paragraphText of section.paragraphs ?? []) out.push(bodyParagraph(paragraphText));
+    if (section.items?.length) out.push(renderNestedItems(section.items, 1));
   });
   return out.join("\n");
 }

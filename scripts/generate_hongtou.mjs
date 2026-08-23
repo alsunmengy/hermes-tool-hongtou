@@ -363,8 +363,8 @@ async function main() {
   const outDir = opts.out ?? join(process.cwd(), "output");
   await mkdir(outDir, { recursive: true });
   const pad = (n) => String(n).padStart(2, "0");
-  const tag = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
-  // 文件名：红头公文_<主要标题>_<日期时间>.xml
+  // 文件名：红头公文_<主要标题>_<年月日>.xml（如 红头公文_关于软件提示说明_2026.06.07.xml）
+  const tag = `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
   const titlePart = String(draft.title ?? "通报")
     .replace(/Hermes 智能体联合委员会关于/gu, "")
     .replace(/的办理情况通报$/gu, "")
@@ -372,7 +372,8 @@ async function main() {
     .replace(/_+/gu, "_")
     .replace(/^_+|_+$/gu, "")
     .slice(0, 30);
-  const file = join(outDir, `红头公文_${titlePart}_${tag}.xml`);
+  // 文件名：红头公文_<年月日>_<标题>.xml（日期在前，便于归档）
+  const file = join(outDir, `红头公文_${tag}_${titlePart}.xml`);
   await writeFile(file, xml, "utf8");
   console.log(`OK 已生成：${file}`);
   console.log(`发文机关：${draft.issuer}`);

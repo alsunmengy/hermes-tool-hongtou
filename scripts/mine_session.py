@@ -44,24 +44,51 @@ def pick_session(con, sid=None):
     return row[0] if row else None
 
 
-def main():
-    sid = sys.argv[1] if len(sys.argv) > 1 else None
-    out_path = sys.argv[2] if len(sys.argv) > 2 else None
-    con = sqlite3.connect(DB)
-    sid = pick_session(con, sid)
-    if not sid:
-        print("未找到 feishu 会话", file=sys.stderr)
-        sys.exit(1)
+def parse_args(argv):
+    if argv and argv[0] == "--day":
+        return {"day": argv[1] if len(argv) > 1 else None, "sid": None, "out": argv[2] if len(argv) > 2 else None}
+    return {"day": None, "sid": argv[0] if len(argv) > 0 else None, "out": argv[1] if len(argv) > 1 else None}
 
-    meta = con.execute(
-        "SELECT title, started_at, message_count, model FROM sessions WHERE id=?", (sid,)
-    ).fetchone()
-    title, started, msg_count, sess_model = meta
-    started_s = datetime.datetime.fromtimestamp(started).strftime("%Y-%m-%d %H:%M") if started else ""
 
+def pick_day_sessions(con, day):
+    d0 = datetime.datetime.strptime(day, "%Y-%m-%d")
+    d1 = d0 + datetime.timedelta(days=1)
+    t0, t1 = d0.timestamp(), d1.timestamp()
     rows = con.execute(
-        "SELECT role, tool_name, content, timestamp, active FROM messages WHERE session_id=? ORDER BY timestamp",
-        (sid,),
+        'SELECT id FROM sessions WHERE source="feishu" AND last_activity_at >= ? AND last_activity_at < ? ORDER BY last_activity_at',
+        (t0, t1),
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def main():
+    args = parse_args(sys.argv[1:])
+    out_path = args["out"]
+    con = sqlite3.connect(DB)
+    if args["day"]:
+        sids = pick_day_sessions(con, args["day"])
+        if not sids:
+            print(f"{args['day']} 无 feishu 会话", file=sys.stderr)
+            sys.exit(1)
+        sid_label = f"{args['day']} 当日会话汇总"
+        title = sid_label
+        sess_model = ""
+    else:
+        sids = [pick_session(con, args["sid"])]
+        if not sids[0]:
+            print("未找到 feishu 会话", file=sys.stderr)
+            sys.exit(1)
+        sid_label = sids[0]
+        meta = con.execute(
+            "SELECT title, started_at, message_count, model FROM sessions WHERE id=?", (sids[0],)
+        ).fetchone()
+        title = meta[0]
+        sess_model = meta[3]
+
+    in_clause = ",".join("?" * len(sids))
+    rows = con.execute(
+        f"SELECT role, tool_name, content, timestamp, active FROM messages WHERE session_id IN ({in_clause}) ORDER BY timestamp",
+        sids,
     ).fetchall()
 
     role_cnt = {"user": 0, "assistant": 0, "tool": 0}
@@ -96,10 +123,10 @@ def main():
     # 模型参与情况：按模型合并（一个模型承担的所有任务并入一条，不拆分）
     from collections import OrderedDict
     model_rows = con.execute(
-        """SELECT model, task, api_call_count, billing_provider
-           FROM session_model_usage WHERE session_id=?
+        f"""SELECT model, task, api_call_count, billing_provider
+           FROM session_model_usage WHERE session_id IN ({in_clause})
            ORDER BY first_seen ASC""",
-        (sid,),
+        sids,
     ).fetchall()
     groups = OrderedDict()
     for m, task, calls, prov in model_rows:
@@ -126,6 +153,36 @@ def main():
     if not model_names:
         model_names = [sess_model or "DeepSeek-V4-Flash-0731"]
 
+    # Token 用量与执行统计（按会话聚合）
+    token_rows = con.execute(
+        f"""SELECT SUM(input_tokens), SUM(output_tokens), SUM(cache_read_tokens), SUM(cache_write_tokens),
+           SUM(reasoning_tokens), SUM(api_call_count), SUM(message_count), SUM(tool_call_count)
+           FROM sessions WHERE id IN ({in_clause})""",
+        sids,
+    ).fetchone()
+    tin, tout, c_r, c_w, reasoning, api_calls, rounds, steps = token_rows
+    tin = tin or 0; tout = tout or 0; c_r = c_r or 0; c_w = c_w or 0
+    reasoning = reasoning or 0; api_calls = api_calls or 0; rounds = rounds or 0; steps = steps or 0
+    cache_hit = (c_r / (tin + c_r) * 100) if (tin + c_r) > 0 else 0
+
+    def token_str(n):
+        if n >= 1_000_000:
+            return f"{n/1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n/1_000:.1f}K"
+        return str(n)
+
+    token_items = [
+        f"输入用量：{token_str(tin)} tokens",
+        f"输出用量：{token_str(tout)} tokens",
+        f"缓存命中量：{token_str(c_r)} tokens（命中率 {cache_hit:.1f}%）",
+        f"缓存写入量：{token_str(c_w)} tokens",
+        f"推理用量：{token_str(reasoning)} tokens",
+        f"API 调用次数：{api_calls} 次",
+        f"对话轮次：{rounds} 轮",
+        f"工具执行步数：{steps} 步",
+    ]
+
     # 执行记录去重计数
     trail_summary = [
         f"{t}×{n}次" for t, n in sorted(tool_cnt.items(), key=lambda kv: -kv[1])[:14]
@@ -139,7 +196,7 @@ def main():
         "documentNumber": f"Hermes发〔{datetime.datetime.now().year}〕{int(datetime.datetime.now().strftime('%m'))}号",
         "title": f"{ORG}关于{title or '本会话事项'}的办理情况通报",
         "recipient": "各受理窗口、各模型实例、相关运维组：",
-        "lead": f"本通报依据会话 {sid} 的完整事件日志整理，共核验原始会话事件 {total} 条，现将办理情况通报如下。",
+        "lead": f"本通报依据{sid_label}的完整事件日志整理，共核验原始会话事件 {total} 条，现将办理情况通报如下。",
         "sections": [
             {
                 "title": "事项起因与背景",
@@ -167,6 +224,13 @@ def main():
                 "items": model_items,
             },
             {
+                "title": "Token 用量与执行统计",
+                "paragraphs": [
+                    "本通讯周期内 Token 用量、API 调用、对话轮次及工具执行步数统计如下，供合规审计与成本核算参考：",
+                ],
+                "items": token_items,
+            },
+            {
                 "title": "成果与验收结论",
                 "paragraphs": [f"截至公文生成时，会话最近可提取的办结性结论为：{last_assistant or '会话尚未形成明确的最终回复'}。该结论仅反映当前日志已记载内容，不对尚未完成的事项作扩大认定。"],
                 "items": [],
@@ -187,7 +251,7 @@ def main():
     if out_path:
         with open(out_path, "w", encoding="utf8") as f:
             json.dump(draft, f, ensure_ascii=False, indent=2)
-        print(f"OK draft -> {out_path}（会话 {sid}，事件 {total} 条，模型 {len(model_names)} 个）")
+        print(f"OK draft -> {out_path}（{sid_label}，事件 {total} 条，模型 {len(model_names)} 个）")
     else:
         print(json.dumps(draft, ensure_ascii=False, indent=2))
 

@@ -43,32 +43,24 @@
 > - Optional official seal: **two built-in seals** (see below)
 > - Word 2003 XML output with built-in structural validation
 
-## 公章 / Official Seals
+## 印章 / Stamp
 
-仓库内置**两款公章**，均可使用：
+仓库内置一枚**爱弥斯联合印章**（1696×1696），作为默认覆盖层：
+
+> The repository ships one **Aemis Union stamp** (1696×1696) as the default overlay:
 
 | 文件 / File | 说明 / Description |
 |---|---|
-| `assets/seal-default.png` | **新章**（2048×2048）——默认款 / **New seal** (2048×2048) — default |
-| `assets/seal-legacy.png` | **旧章**（1500×1500）——前一款，可选 / **Legacy seal** (1500×1500) — optional |
+| `assets/seal-default.png` | **爱弥斯联合印章**（1696×1696）——默认 / **Aemis Union stamp** (1696×1696) — default |
 
-**新章（默认） / New seal (default):**
-
-![新章](./previews/seal-default.png)
-
-![爱弥斯](./previews/aemis.jpg)
+![爱弥斯联合](./previews/aemis.jpg)
 
 > **誓死效忠爱弥斯联合！**
-
-**旧章（可选） / Legacy seal (optional):**
-
-![旧章](./previews/seal-legacy.png)
 
 选择方式 / Selection:
 
 ```
---seal default    # 新章（默认）/ new seal (default)
---seal legacy     # 旧章 / legacy seal
+--seal default    # 爱弥斯联合印章（默认）/ Aemis Union stamp (default)
 --seal off        # 不盖章 / no stamp
 --seal <path>     # 自定义图片 / custom image
 ```

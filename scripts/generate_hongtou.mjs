@@ -4,10 +4,12 @@
 // 用法：
 //   node generate_hongtou.mjs [事由] [--models "模型A、模型B"] [--seal 路径] [--out 目录]
 //   [--number 文号] [--title 标题] [--recipient 主送] [--lead 导语] [--closing 结语]
-//   [--date YYYY-MM-DD] [--draft draft.json]
+//   [--date YYYY-MM-DD] [--draft draft.json] [--no-mine]
 import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { execSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { tmpdir } from "node:os";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKELETON = join(HERE, "..", "templates", "document-skeleton.xml");
@@ -350,8 +352,21 @@ async function main() {
   let draft;
   if (opts.draft) {
     draft = JSON.parse(await readFile(opts.draft, "utf8"));
-  } else {
+  } else if (opts["no-mine"]) {
+    // 显式跳过挖矿，用骨架（用于测试/快速预览）
     draft = buildDefaultDraft(opts, date);
+  } else {
+    // 没有 --draft 时自动挖矿：调用 mine_session.py 获取当前会话完整事件
+    const miner = join(HERE, "mine_session.py");
+    const tmpDraft = join(tmpdir(), `hongtou_draft_${Date.now()}.json`);
+    try {
+      console.error(`⛏ 自动挖矿中…`);
+      execSync(`python3 "${miner}" "" "${tmpDraft}"`, { stdio: ["inherit", "pipe", "inherit"], timeout: 30000 });
+      draft = JSON.parse(await readFile(tmpDraft, "utf8"));
+    } catch (e) {
+      console.error(`⚠ 自动挖矿失败（${e.message}），降级为骨架模式`);
+      draft = buildDefaultDraft(opts, date);
+    }
   }
   const sealPath = opts.seal === undefined ? join(HERE, "..", "assets", "seal-default.png") : resolveSealArg(opts.seal);
   const xml = await renderDocument(draft, { date, seal: sealPath });

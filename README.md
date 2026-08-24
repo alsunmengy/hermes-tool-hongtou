@@ -71,10 +71,12 @@
 # 1) 挖掘会话 → 生成 draft（缺省会话 id 取最近活跃的 feishu 会话）
 python3 scripts/mine_session.py [session_id] /tmp/draft.json
 
-# 2) 渲染 Word 2003 XML（默认盖新章）
+# 2) 渲染 Word 2003 XML（默认自动挖矿 + 盖新章，无需手动 --draft）
+node scripts/generate_hongtou.mjs "事项标题" --out ./output
+#    或传入 draft 跳过挖矿：
 node scripts/generate_hongtou.mjs --draft /tmp/draft.json --out ./output
-#    或直接按事由生成默认模板：
-node scripts/generate_hongtou.mjs "事项标题" --models "模型A、模型B" --seal legacy
+#    或 --no-mine 用骨架模板（仅用于测试）：
+node scripts/generate_hongtou.mjs "事项标题" --no-mine
 ```
 
 产出文件命名：`红头公文_<主要标题>_<日期时间>.xml`。
@@ -83,6 +85,17 @@ node scripts/generate_hongtou.mjs "事项标题" --models "模型A、模型B" --
 > python3 scripts/mine_session.py [session_id] /tmp/draft.json
 > node scripts/generate_hongtou.mjs --draft /tmp/draft.json --out ./output
 > ```
+
+## 更新日志 / Changelog
+
+### v2026.08.24
+- **自动挖矿**：`generate_hongtou.mjs` 不带 `--draft` 时自动调用 `mine_session.py`（`--no-mine` 跳过）
+- **结论段修复**：废弃占位符「（办结性结论）」，改为基于会话实际输出的结论
+- **多模型联合声明**：多模型参与时落款签名自动追加「联合声明」
+- **`/hongtou` 命令**：注册 Hermes 斜杠命令 `/hongtou`（别名 `/红头`、`/ht`）
+
+### v2026.08.23
+- 初版发布：会话挖掘、Word 2003 XML 渲染、爱弥斯联合公章、每日自动化 Release
 
 ## 感谢 / Credits
 

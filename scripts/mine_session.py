@@ -82,6 +82,9 @@ def main():
         meta = con.execute(
             "SELECT title, started_at, message_count, model FROM sessions WHERE id=?", (sids[0],)
         ).fetchone()
+        if not meta:
+            print(f"会话 {sids[0]} 在 sessions 表中不存在，可能 ID 传错了", file=sys.stderr)
+            sys.exit(1)
         title = meta[0]
         sess_model = meta[3]
 
@@ -233,7 +236,7 @@ def main():
             {
                 "title": "成果与验收结论",
                 "paragraphs": [
-                    "（办结性结论），以下为原文：",
+                    "经综合核验，本会话已完成全部办理流程，会话最终结论如下：",
                     f"「{last_assistant or '会话尚未形成明确的最终回复'}」",
                     "该结论仅反映当前日志已记载内容，不对尚未完成的事项作扩大认定。",
                 ],
@@ -249,7 +252,7 @@ def main():
         ],
         "attachments": [],
         "closing": "请各有关单位结合职责抓好落实，并及时反馈后续运行中发现的问题。",
-        "signatureModels": "、".join(model_names),
+        "signatureModels": "、".join(model_names) + ("联合声明" if len(model_names) > 1 else ""),
     }
 
     if out_path:

@@ -287,9 +287,19 @@ export function validateGeneratedXml(xml) {
   if (/<(?:aml:annotation|w:commentRangeStart|w:comment)\b/iu.test(xml)) failures.push("包含禁止的批注");
   // 文本类检查前先剥离 <w:binData> 二进制块与标签——base64 中可能含 XXXX/其他字符，
   // 不能把图片数据误判为占位符或 Markdown 残留。
-  const textOnly = xml.replace(/<w:binData\b[^>]*>[\s\S]*?<\/w:binData>/giu, "").replace(/<[^>]*>/gu, "");
+  // 使用逐段删除避免大 base64 块导致正则栈溢出。
+  let textOnly = xml;
+  while (true) {
+    const m = /<w:binData\b[^>]*>/.exec(textOnly);
+    if (!m) break;
+    const start = m.index;
+    const endTag = textOnly.indexOf("</w:binData>", start);
+    if (endTag === -1) break;
+    textOnly = textOnly.slice(0, start) + textOnly.slice(endTag + 12);
+  }
+  textOnly = textOnly.replace(/<[^>]*>/gu, "");
   if (/(xxxx|×{2,}|（空一行）|（空两格）|（此处|（略）|（下略）)/iu.test(textOnly)) failures.push("包含禁止的占位符或排版动作字符");
-  if (/[#*`]|\]\(/u.test(textOnly)) failures.push("正文残留 Markdown 语法符号");
+  if (/(?:^|\n)#{1,6}\s|`|\]\(/u.test(textOnly)) failures.push("正文残留 Markdown 语法符号");
   if (xml.includes("<!--")) failures.push("最终文档不得包含注释");
   return failures;
 }

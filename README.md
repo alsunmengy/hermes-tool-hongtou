@@ -88,6 +88,12 @@ node scripts/generate_hongtou.mjs "事项标题" --no-mine
 
 ## 更新日志 / Changelog
 
+### v1.0.0
+- **官方插件化**：`/hongtou` 迁移为官方 Hermes 插件格式（`~/.hermes/plugins/hongtou/`，`plugin.yaml` + `__init__.py` + `register()` 注册 `/hongtou`、`/红头`、`/ht`），不再改动核心 `hermes_cli/commands.py`
+- **去除转 PDF 步骤**：`generate_hongtou.mjs` 不再调用 soffice 转 PDF，直接输出 Word 2003 XML（WPS/Word 打开）
+- **文本校验加固**：正文残留检测改用逐段剥离 `binData`（避免大 base64 块触发正则栈溢出）
+- **字体/印章随仓库分发**：打包 4 款公文字体（小标宋/仿宋/黑体/楷体）+ 爱弥斯联合印章
+
 ### v2026.08.24
 - **自动挖矿**：`generate_hongtou.mjs` 不带 `--draft` 时自动调用 `mine_session.py`（`--no-mine` 跳过）
 - **结论段修复**：废弃占位符「（办结性结论）」，改为基于会话实际输出的结论

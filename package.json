@@ -1,6 +1,6 @@
 {
   "name": "hermes-tool-hongtou",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Hermes 红头公文生成器：挖掘会话事件，生成 Hermes 智能体联合委员会版 Word 2003 XML（可盖公章）。Forked from dsh-tool-hongtou.",
   "bin": {

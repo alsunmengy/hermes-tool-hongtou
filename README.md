@@ -1,4 +1,5 @@
 # hermes-tool-hongtou
+[![GitHub followers](https://img.shields.io/github/followers/alsunmengy?style=social&label=Follow)](https://github.com/alsunmengy)
 
 生成 **Hermes 智能体联合委员会** 红头公文（Word 2003 XML）的工具。基于开源项目
 [dsh-tool-hongtou](https://github.com/ExElectron/dsh-tool-hongtou) 改造而来，在此对原作者 ExElectron 的
